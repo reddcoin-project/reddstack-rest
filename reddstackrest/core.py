@@ -1,4 +1,5 @@
 import json
+from pymemcache.client.base import Client
 from twisted.internet.defer import inlineCallbacks, returnValue
 from klein import Klein
 from blockstore_client import config, client
@@ -9,6 +10,18 @@ conf = config.get_config()
 conf["network"] = "mainnet"
 proxy = client.session(conf, conf['server'], conf['port'])
 
+
+def json_serializer(key, value):
+    if type(value) == str:
+        return value, 1
+    return json.dumps(value), 2
+
+def json_deserializer(key, value, flags):
+   if flags == 1:
+       return value
+   if flags == 2:
+       return json.loads(value)
+   raise Exception("Unknown flags for value: {1}".format(flags))
 
 with app.subroute("/") as app:
     @app.route('/')
@@ -35,7 +48,16 @@ with app.subroute("/") as app:
             @inlineCallbacks
             def pg_api_status(request):
                 request.setHeader('Content-Type', 'application/json')
-                responsebody = yield client.getinfo()
+
+                memclient = Client(('localhost', 11211), serializer=json_serializer, deserializer=json_deserializer)
+                responsebody = memclient.get('status')
+
+                if responsebody is None:
+                    # cache empty, query server directly
+                    responsebody = yield client.getinfo()
+
+                    # set cache
+                    memclient.set('status', responsebody, expire=10)
 
                 if 'traceback' in responsebody:
                     del responsebody['traceback']
