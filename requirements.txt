@@ -2,7 +2,7 @@ blockstore-client==0.0.12.4
 klein==17.10.0
 pyreddcoin==0.9.9
 pyreddcointools==1.1.43
-Twisted==15.5.0
+Twisted==20.3.0
 txJSON-RPC==0.5
 virtualchain==0.0.9.0
 klein==17.10.0
